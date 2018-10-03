@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -12,19 +13,34 @@ import (
 var query struct {
 	Search struct {
 		Total    graphql.Int
-		Business struct {
+		Business []struct {
 			Name   graphql.String
 			Rating graphql.Float
 			Price  graphql.String
-			Hours  struct {
+			Url    graphql.String
+			Hours  []struct {
 				Is_open_now graphql.Boolean
-				Open        struct {
+				Open        []struct {
+					Day   graphql.Int
 					Start graphql.String
 					End   graphql.String
 				}
 			}
 		}
-	} `graphql:"search(location: \"22765\")"`
+	} `graphql:"search(location: $zip, limit: 1, radius: 1500)"`
+}
+
+type Restaurant struct {
+	Name        string
+	Url         string
+	Price       string
+	Is_open_now bool
+}
+
+type Open struct {
+	Day   int
+	Start string
+	End   string
 }
 
 func main() {
@@ -32,6 +48,9 @@ func main() {
 }
 
 func yelpSearch() {
+	variables := map[string]interface{}{
+		"zip": graphql.String(os.Getenv("GOLUNCH_ZIP"))}
+
 	src := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: os.Getenv("GRAPHQL_TOKEN")},
 	)
@@ -40,15 +59,26 @@ func yelpSearch() {
 
 	client := graphql.NewClient("https://api.yelp.com/v3/graphql", httpClient)
 
-	err := client.Query(context.Background(), &query, nil)
+	err := client.Query(context.Background(), &query, variables)
 	if err != nil {
 		// Handle error.
 
 	}
 
-	fmt.Println(query.Search.Business.Name)
 	fmt.Println(query.Search.Total)
-	fmt.Println(query.Search.Business.Rating)
-	fmt.Println(query.Search.Business.Price)
-	fmt.Println(query.Search.Business.Hours.Is_open_now)
+	for num := range query.Search.Business {
+		fmt.Println(query.Search.Business[num].Name)
+		fmt.Println(query.Search.Business[num].Url)
+		fmt.Println(query.Search.Business[num].Rating)
+		fmt.Println(query.Search.Business[num].Price)
+		fmt.Println(query.Search.Business[num].Hours[0].Is_open_now)
+		m := Restaurant{string(query.Search.Business[num].Name), string(query.Search.Business[num].Url), string(query.Search.Business[num].Price), bool(query.Search.Business[num].Hours[0].Is_open_now)}
+		b, err := json.Marshal(m)
+		for day := range query.Search.Business[num].Hours[0].Open {
+			fmt.Println(query.Search.Business[num].Hours[0].Open[day].Day)
+			fmt.Println(query.Search.Business[num].Hours[0].Open[day].Start)
+			fmt.Println(query.Search.Business[num].Hours[0].Open[day].End)
+		}
+	}
+
 }
