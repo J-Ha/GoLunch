@@ -31,10 +31,10 @@ var query struct {
 }
 
 type Restaurant struct {
-	Name        string
-	Url         string
-	Price       string
-	Is_open_now bool
+	Name      string
+	URL       string
+	Price     string
+	IsOpenNow bool
 }
 
 type Open struct {
@@ -74,11 +74,16 @@ func yelpSearch() {
 		fmt.Println(query.Search.Business[num].Hours[0].Is_open_now)
 		m := Restaurant{string(query.Search.Business[num].Name), string(query.Search.Business[num].Url), string(query.Search.Business[num].Price), bool(query.Search.Business[num].Hours[0].Is_open_now)}
 		b, err := json.Marshal(m)
+		if err != nil {
+			// Handle error.
+		}
+		fmt.Println(b)
 		for day := range query.Search.Business[num].Hours[0].Open {
 			fmt.Println(query.Search.Business[num].Hours[0].Open[day].Day)
 			fmt.Println(query.Search.Business[num].Hours[0].Open[day].Start)
 			fmt.Println(query.Search.Business[num].Hours[0].Open[day].End)
 		}
+
 	}
 
 }
