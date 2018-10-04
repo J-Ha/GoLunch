@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/shurcooL/graphql"
 	"golang.org/x/oauth2"
 )
@@ -27,7 +29,7 @@ var query struct {
 				}
 			}
 		}
-	} `graphql:"search(location: $zip, limit: 1, radius: 1500)"`
+	} `graphql:"search(location: $zip)"`
 }
 
 type Restaurant struct {
@@ -35,6 +37,7 @@ type Restaurant struct {
 	URL       string
 	Price     string
 	IsOpenNow bool
+	Open      Open
 }
 
 type Open struct {
@@ -66,24 +69,42 @@ func yelpSearch() {
 	}
 
 	fmt.Println(query.Search.Total)
-	for num := range query.Search.Business {
-		fmt.Println(query.Search.Business[num].Name)
-		fmt.Println(query.Search.Business[num].Url)
-		fmt.Println(query.Search.Business[num].Rating)
-		fmt.Println(query.Search.Business[num].Price)
-		fmt.Println(query.Search.Business[num].Hours[0].Is_open_now)
-		m := Restaurant{string(query.Search.Business[num].Name), string(query.Search.Business[num].Url), string(query.Search.Business[num].Price), bool(query.Search.Business[num].Hours[0].Is_open_now)}
+	for _, business := range query.Search.Business {
+		day := int(time.Now().Weekday())
+
+		open := Open{}
+		opennow := true
+		if len(business.Hours) > 0 {
+			openDays := business.Hours[0].Open
+			open = Open{Day: int(openDays[day].Day), Start: string(openDays[day].Start), End: string(openDays[day].End)}
+			opennow = bool(business.Hours[0].Is_open_now)
+		}
+		m := Restaurant{
+			string(business.Name),
+			string(business.Url),
+			string(business.Price),
+			opennow,
+			open,
+		}
 		b, err := json.Marshal(m)
 		if err != nil {
 			// Handle error.
 		}
-		fmt.Println(b)
-		for day := range query.Search.Business[num].Hours[0].Open {
-			fmt.Println(query.Search.Business[num].Hours[0].Open[day].Day)
-			fmt.Println(query.Search.Business[num].Hours[0].Open[day].Start)
-			fmt.Println(query.Search.Business[num].Hours[0].Open[day].End)
-		}
-
+		fmt.Println(string(b))
+		RedisClient("r/"+string(business.Name), b)
 	}
 
+}
+
+func RedisClient(key string, value []byte) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	err := client.Set(key, value, 0).Err()
+	if err != nil {
+		panic(err)
+	}
 }

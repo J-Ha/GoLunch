@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/go-redis/redis"
 )
 
@@ -21,15 +19,4 @@ func ExampleNewClient(key string, value string) {
 	if err != nil {
 		panic(err)
 	}
-
-	bla := client.Get(key)
-	fmt.Println(bla)
-
-	err2 := client.Append(key, ",lalalalala")
-	if err != nil {
-		panic(err2)
-	}
-
-	bla = client.Get(key)
-	fmt.Println(bla)
 }
