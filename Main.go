@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/shurcooL/graphql"
@@ -29,7 +28,7 @@ var query struct {
 				}
 			}
 		}
-	} `graphql:"search(location: $zip)"`
+	} `graphql:"search(location: $zip, radius: 1500, limit: $limit, offset: $offset)"`
 }
 
 type Restaurant struct {
@@ -47,51 +46,51 @@ type Open struct {
 }
 
 func main() {
-	yelpSearch()
+	indexRestaurants()
 }
 
-func yelpSearch() {
+func yelpSearch(limit int, offset int) {
 	variables := map[string]interface{}{
-		"zip": graphql.String(os.Getenv("GOLUNCH_ZIP"))}
-
+		"zip":    graphql.String(os.Getenv("GOLUNCH_ZIP")),
+		"limit":  graphql.Int(limit),
+		"offset": graphql.Int(offset),
+	}
 	src := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: os.Getenv("GRAPHQL_TOKEN")},
 	)
-
 	httpClient := oauth2.NewClient(context.Background(), src)
-
 	client := graphql.NewClient("https://api.yelp.com/v3/graphql", httpClient)
 
 	err := client.Query(context.Background(), &query, variables)
 	if err != nil {
-		// Handle error.
-
 	}
+}
 
+func indexRestaurants() {
+	offset := 0
+	limit := 50
+	yelpSearch(limit, offset)
+	num := int(query.Search.Total) / limit
 	fmt.Println(query.Search.Total)
-	for _, business := range query.Search.Business {
-		day := int(time.Now().Weekday())
-
-		open := Open{}
-		opennow := true
-		if len(business.Hours) > 0 {
-			openDays := business.Hours[0].Open
-			open = Open{Day: int(openDays[day].Day), Start: string(openDays[day].Start), End: string(openDays[day].End)}
-			opennow = bool(business.Hours[0].Is_open_now)
+	for i := 0; i <= num; i++ {
+		yelpSearch(limit, offset)
+		for _, business := range query.Search.Business {
+			open := Open{}
+			opennow := true
+			m := Restaurant{
+				string(business.Name),
+				string(business.Url),
+				string(business.Price),
+				opennow,
+				open,
+			}
+			b, err := json.Marshal(m)
+			if err != nil {
+				// Handle error.
+			}
+			RedisClient("r/"+string(business.Name), b)
 		}
-		m := Restaurant{
-			string(business.Name),
-			string(business.Url),
-			string(business.Price),
-			opennow,
-			open,
-		}
-		b, err := json.Marshal(m)
-		if err != nil {
-			// Handle error.
-		}
-		fmt.Println(string(b))
-		RedisClient("r/"+string(business.Name), b)
+		offset = offset + limit
 	}
 
 }
