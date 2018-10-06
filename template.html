@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 	<html>
 	<body>
-   
-	<select>
-	  {{range $key, $value := .}}
-		<option value="{{ $value }}">{{ $key }}</option>
-	  {{end}}
-   
-   
-	</select>
-   
+	<form action="/subscribe2	" method="post">
+		Username:<input type="text" name="username">
+		Restaurant:<select name="restaurant">	  
+			{{range $key, $value := .}}
+			<option value="{{ $key }}">{{ $key }}</option>
+			{{end}}
+		</select>
+		<input type="submit" value="+">
+	</form>
 	</body>
 	</html>

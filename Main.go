@@ -64,6 +64,7 @@ func main() {
 	restaurant := ("Asia Imbiss")
 	subscribe(restaurant, user)
 	http.HandleFunc("/", generateWebsite)
+	http.HandleFunc("/subscribe2", subscribe2)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -176,6 +177,18 @@ func generateWebsite(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-
 	dropdownTemplate.Execute(w, htmlrest)
+}
+
+
+func subscribe2(w http.ResponseWriter, r *http.Request) {
+    fmt.Println("method:", r.Method) //get request method
+    if r.Method == "GET" {
+    } else {
+        r.ParseForm()
+		// logic part of log in
+		subscribe(r.Form["restaurant"][0],[]byte(r.Form["username"][0]))
+        fmt.Println("username:", r.Form["username"])
+        fmt.Println("restaurant:", r.Form["restaurant"])
+    }
 }
