@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -162,36 +163,19 @@ func subscribe(restaurant string, user []byte) {
 }
 
 func generateWebsite(w http.ResponseWriter, r *http.Request) {
-	html := `<!DOCTYPE html>
-	<html>
-	<body>
-   
-	<select> // for loop in html template example
-	  {{range $key, $value := .}}
-		<option value="{{ $value }}">{{ $key }}</option>
-	  {{end}}
-   
-   
-	</select>
-   
-	</body>
-	</html>`
-
 	names, _ := redisGetKeys("r/*").Result()
+	html, err := ioutil.ReadFile("template.html")
 
+	var htmlrest = make(map[string]interface{})
 	for num, rest := range names {
 		values, _ := redisGet(rest).Result()
-		var htmlrest = map[string]interface{}{
-			strings.Replace(names[num], "r/", "", -1): values,
-		}
-		//io.WriteString(w, strings.Replace(names[num], "r/", "", -1)+" "+values+"\n")
-		dropdownTemplate, err := template.New("dropdownexample").Parse(string(html))
-		if err != nil {
-			panic(err)
-		}
-		// populate dropdown with fruits
-		dropdownTemplate.Execute(w, htmlrest)
-
+		htmlrest[strings.Replace(names[num], "r/", "", -1)] = values
 	}
 
+	dropdownTemplate, err := template.New("dropdownexample").Parse(string(html))
+	if err != nil {
+		panic(err)
+	}
+
+	dropdownTemplate.Execute(w, htmlrest)
 }

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+	<html>
+	<body>
+   
+	<select>
+	  {{range $key, $value := .}}
+		<option value="{{ $value }}">{{ $key }}</option>
+	  {{end}}
+   
+   
+	</select>
+   
+	</body>
+	</html>
