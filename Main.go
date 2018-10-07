@@ -60,11 +60,10 @@ type DropdownItem struct {
 }
 
 func main() {
-	user := getUser()
-	restaurant := ("Asia Imbiss")
-	subscribe(restaurant, user)
 	http.HandleFunc("/", generateWebsite)
-	http.HandleFunc("/subscribe2", subscribe2)
+	http.HandleFunc("/subscribe", webSubscribe)
+	http.HandleFunc("/index", webIndex)
+	http.HandleFunc("/append", webAppend)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -119,7 +118,6 @@ func redisClient(key string, value []byte) {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-
 	err := client.Set(key, value, 0).Err()
 	if err != nil {
 		panic(err)
@@ -165,30 +163,77 @@ func subscribe(restaurant string, user []byte) {
 
 func generateWebsite(w http.ResponseWriter, r *http.Request) {
 	names, _ := redisGetKeys("r/*").Result()
-	html, err := ioutil.ReadFile("template.html")
+	html, _ := ioutil.ReadFile("template.html")
+	cont, _ := ioutil.ReadFile("content.html")
 
-	var htmlrest = make(map[string]interface{})
+	var HtmlRest = make(map[string]interface{})
 	for num, rest := range names {
 		values, _ := redisGet(rest).Result()
-		htmlrest[strings.Replace(names[num], "r/", "", -1)] = values
+		HtmlRest[strings.Replace(names[num], "r/", "", -1)] = values
+	}
+
+	subs, _ := redisGetKeys("s/*").Result()
+	var HtmlSubs = make(map[string]interface{})
+	for _, rests := range subs {
+		subRest, _ := redisGet(strings.Replace(rests, "s/", "r/", -1)).Result()
+		subss, _ := redisGet(strings.Replace(rests, "s/", "r/", 0)).Result()
+		HtmlSubs[subRest] = subss
 	}
 
 	dropdownTemplate, err := template.New("dropdownexample").Parse(string(html))
 	if err != nil {
 		panic(err)
 	}
-	dropdownTemplate.Execute(w, htmlrest)
+	dropdownTemplate.Execute(w, HtmlRest)
+
+	content, err := template.New("content").Parse(string(cont))
+	if err != nil {
+		panic(err)
+	}
+	content.Execute(w, HtmlSubs)
 }
 
-
-func subscribe2(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("method:", r.Method) //get request method
-    if r.Method == "GET" {
-    } else {
-        r.ParseForm()
+func webSubscribe(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		r.ParseForm()
 		// logic part of log in
-		subscribe(r.Form["restaurant"][0],[]byte(r.Form["username"][0]))
-        fmt.Println("username:", r.Form["username"])
-        fmt.Println("restaurant:", r.Form["restaurant"])
-    }
+		subscribe(r.Form["restaurant"][0], []byte(r.Form["username"][0]))
+		fmt.Println("username:", r.Form["username"])
+		fmt.Println("restaurant:", r.Form["restaurant"])
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+func webIndex(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		indexRestaurants()
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+func redisAppend(key string, user string) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	client.Append(key, user)
+}
+
+func webAppend(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		r.ParseForm()
+		key := "s/Köz Urfa"
+		user := r.Form["username"]
+		redisAppend(key, ","+user[0])
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
 }

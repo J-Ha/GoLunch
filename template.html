@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 	<html>
 	<body>
-	<form action="/subscribe2	" method="post">
+	<form action="/subscribe" method="post">
 		Username:<input type="text" name="username">
 		Restaurant:<select name="restaurant">	  
 			{{range $key, $value := .}}
@@ -9,6 +9,9 @@
 			{{end}}
 		</select>
 		<input type="submit" value="+">
+	</form>
+	<form action="/index" method="post">
+		<input type="submit" value="Index">
 	</form>
 	</body>
 	</html>

@@ -1,0 +1,10 @@
+{{define "content"}}
+	{{range $key, $value := .}}
+	<div>
+		<p>{{ $key }}</p> <div name="user">{{ $value }}</div>
+		<form action="/append" method="post">
+			Username:<input type="text" name="username">
+			<input type="submit" value="+">
+	</div>
+	{{end}}
+{{end}}
