@@ -231,9 +231,11 @@ func webAppend(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	} else {
 		r.ParseForm()
-		key := "s/Köz Urfa"
-		user := r.Form["username"]
-		redisAppend(key, ","+user[0])
+		data := Restaurant{}
+		user := r.Form["username"][0]
+		json.Unmarshal([]byte(r.Form["restaurant"][0]), &data)
+		fmt.Println(data.Name)
+		redisAppend("s/"+data.Name, ","+user)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }

@@ -3,6 +3,7 @@
 	<div>
 		<p>{{ $key }}</p> <div name="user">{{ $value }}</div>
 		<form action="/append" method="post">
+			<input type="hidden" name="restaurant" value={{ $key }}>
 			Username:<input type="text" name="username">
 			<input type="submit" value="+">
 	</div>
