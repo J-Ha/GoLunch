@@ -1,0 +1,10 @@
+		group := Subscribe{
+			Time:  r.Form["time"][0],
+			Users: []string{user},
+		}
+		json.Marshal(group)
+		b, err := json.Marshal(group)
+		if err != nil {
+			fmt.Println("error:", err)
+		}
+		fmt.Println(b)

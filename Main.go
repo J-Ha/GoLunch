@@ -54,17 +54,30 @@ type User struct {
 	Name string
 }
 
+type Users struct {
+	Name []string
+}
+
 type DropdownItem struct {
 	Name  string
 	Value string
 }
 
+type Subscribe struct {
+	Time  string
+	Users []string
+}
+
+var redisClient *redis.Client
+
 func main() {
+	newRedisClient()
 	http.HandleFunc("/", generateWebsite)
 	http.HandleFunc("/subscribe", webSubscribe)
 	http.HandleFunc("/index", webIndex)
 	http.HandleFunc("/append", webAppend)
 	log.Fatal(http.ListenAndServe(":8080", nil))
+
 }
 
 func yelpSearch(limit int, offset int) {
@@ -106,44 +119,10 @@ func indexRestaurants() {
 			if err != nil {
 				// Handle error.
 			}
-			redisClient("r/"+string(business.Name), b)
+			redisSet("r/"+string(business.Name), string(b))
 		}
 		offset = offset + limit
 	}
-}
-
-func redisClient(key string, value []byte) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-	err := client.Set(key, value, 0).Err()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func redisGet(key string) *redis.StringCmd {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-
-	values := client.Get(key)
-	return values
-}
-
-func redisGetKeys(prefix string) *redis.StringSliceCmd {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-
-	keys := client.Keys(prefix)
-	return keys
 }
 
 func getUser() []byte {
@@ -158,7 +137,7 @@ func getUser() []byte {
 }
 
 func subscribe(restaurant string, user []byte) {
-	redisClient("s/"+restaurant, user)
+	redisSetList("s/"+restaurant, string(user))
 }
 
 func generateWebsite(w http.ResponseWriter, r *http.Request) {
@@ -175,11 +154,10 @@ func generateWebsite(w http.ResponseWriter, r *http.Request) {
 	subs, _ := redisGetKeys("s/*").Result()
 	var HtmlSubs = make(map[string]interface{})
 	for _, rests := range subs {
-		subRest, _ := redisGet(strings.Replace(rests, "s/", "r/", -1)).Result()
-		subss, _ := redisGet(strings.Replace(rests, "s/", "r/", 0)).Result()
+		subRest, _ := redisGet(strings.Replace(strings.TrimRight(strings.SplitAfter(rests, "-")[0], "-"), "s/", "r/", -1)).Result()
+		subss, _ := redisClient.LRange(rests, 0, -1).Result()
 		HtmlSubs[subRest] = subss
 	}
-
 	dropdownTemplate, err := template.New("dropdownexample").Parse(string(html))
 	if err != nil {
 		panic(err)
@@ -200,9 +178,21 @@ func webSubscribe(w http.ResponseWriter, r *http.Request) {
 	} else {
 		r.ParseForm()
 		// logic part of log in
-		subscribe(r.Form["restaurant"][0], []byte(r.Form["username"][0]))
+
+		group := Subscribe{
+			Time:  r.Form["time"][0],
+			Users: []string{r.Form["username"][0]},
+		}
+		json.Marshal(group)
+		b, err := json.Marshal(group)
+		if err != nil {
+			fmt.Println("error:", err)
+		}
+		fmt.Println(b)
 		fmt.Println("username:", r.Form["username"])
-		fmt.Println("restaurant:", r.Form["restaurant"])
+		fmt.Println("time:", r.Form["time"])
+		fmt.Println("restaurant:", r.Form["restaurant"][0]+"-"+strings.Replace(r.Form["time"][0], ":", "", -1))
+		subscribe(r.Form["restaurant"][0], []byte(b))
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
@@ -217,15 +207,6 @@ func webIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func redisAppend(key string, user string) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-	client.Append(key, user)
-}
-
 func webAppend(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -235,7 +216,50 @@ func webAppend(w http.ResponseWriter, r *http.Request) {
 		user := r.Form["username"][0]
 		json.Unmarshal([]byte(r.Form["restaurant"][0]), &data)
 		fmt.Println(data.Name)
+		fmt.Println(user)
 		redisAppend("s/"+data.Name, ","+user)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
+}
+
+func newRedisClient() {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+}
+
+func redisSet(key string, value string) {
+	err := redisClient.Set(key, value, 0).Err()
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func redisSetList(key string, value string) {
+	err := redisClient.RPush(key, value).Err()
+	if err != nil {
+		panic(err)
+	}
+	err = redisClient.SortStore(key, key, &redis.Sort{By: "Fa*"}).Err()
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func redisGet(key string) *redis.StringCmd {
+	values := redisClient.Get(key)
+	return values
+}
+
+func redisAppend(key string, user string) {
+	redisClient.Append(key, user)
+}
+
+func redisGetKeys(prefix string) *redis.StringSliceCmd {
+	keys := redisClient.Keys(prefix)
+	return keys
 }
