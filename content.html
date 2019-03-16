@@ -2,11 +2,14 @@
 	{{range $key, $value := .}}
 	<div>
 		<p>{{ $key }}</p> 
-		<div name="user">{{ $value }}</div>
+		{{range $foo, $bar := $value }}
+		<div name="user">{{ $bar }}</div>
 		<form action="/append" method="post">
 			<input type="hidden" name="restaurant" value={{ $key }}>
-			Username:<input type="text" name="username">
+			Username:<input type="text" index={{ $foo }} name="username">
 			<input type="submit" value="+">
-	</div>
+		</form>
+		</br>
+		{{end}}
 	{{end}}
 {{end}}
