@@ -1,0 +1,18 @@
+
+	<head>
+			<script src="https://code.jquery.com/jquery-latest.js"></script>
+	</head>
+
+	<form action="/subscribe" method="post">
+		Username:<input type="text" name="username">
+		Time:<input type="time" name="time" min="9:00" max="18:00" value="12:00" required>
+		Restaurant:<select name="restaurant">	  
+			{{range $key, $value := .}}
+			<option value="{{ $key }}">{{ $key }}</option>
+			{{end}}
+		</select>
+		<input type="submit" value="+">
+	</form>
+	<form action="/index" method="post">
+		<input type="submit" value="Index">
+	</form>
