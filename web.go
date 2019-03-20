@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 func webIndex(w http.ResponseWriter, r *http.Request) {
@@ -19,8 +20,8 @@ func webIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func generateWebsite(w http.ResponseWriter, r *http.Request) {
-	html, _ := ioutil.ReadFile("template.html")
-	cont, _ := ioutil.ReadFile("content.html")
+	html, _ := ioutil.ReadFile("./web/template.html")
+	cont, _ := ioutil.ReadFile("./web/content.html")
 	names := redisGetKeys("*")
 
 	var HtmlRest = make(map[string]interface{})
@@ -78,10 +79,10 @@ func webAppend(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		data := Restaurant{}
 		user := r.Form["username"][0]
+		index, _ := strconv.Atoi(r.Form["index"][0])
+
 		json.Unmarshal([]byte(r.Form["restaurant"][0]), &data)
-		fmt.Println(data.Name)
-		fmt.Println(user)
-		redisAppend("s/"+data.Name, ","+user)
+		redisAppend(data.Name, index+1, user)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }

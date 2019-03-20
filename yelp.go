@@ -68,7 +68,9 @@ func indexRestaurants() {
 			if err != nil {
 				// Handle error.
 			}
-			redisSetList(string(business.Name), string(b))
+			if redisListLength(string(business.Name)) == 0 {
+				redisSetList(string(business.Name), string(b))
+			}
 		}
 		offset = offset + limit
 	}

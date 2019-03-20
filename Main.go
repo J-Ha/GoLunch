@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/go-redis/redis"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 )
@@ -43,10 +44,12 @@ var redisClient *redis.Client
 
 func main() {
 	newRedisClient()
-	http.HandleFunc("/", generateWebsite)
-	http.HandleFunc("/subscribe", webSubscribe)
-	http.HandleFunc("/index", webIndex)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	r := mux.NewRouter()
+	r.HandleFunc("/", generateWebsite)
+	r.HandleFunc("/subscribe", webSubscribe)
+	r.HandleFunc("/index", webIndex)
+	r.HandleFunc("/append", webAppend)
+	log.Fatal(http.ListenAndServe(":8080", r))
 
 }
 

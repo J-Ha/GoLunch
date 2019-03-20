@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/go-redis/redis"
+	"github.com/tidwall/sjson"
 )
 
 func newRedisClient() {
@@ -37,8 +38,13 @@ func redisGet(key string) string {
 	return values
 }
 
-func redisAppend(key string, user string) {
-	redisClient.Append(key, user)
+func redisAppend(key string, index int, user string) {
+	bla, _ := redisClient.LRange(key, int64(index), int64(index)).Result()
+	value, _ := sjson.Set(bla[0], "Users.-1", user)
+	err := redisClient.LSet(key, int64(index), value).Err()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func redisGetKeys(prefix string) []string {
